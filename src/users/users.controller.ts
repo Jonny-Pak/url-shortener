@@ -1,174 +1,172 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Delete, 
-  Body, 
-  Param, 
-  UseGuards, 
-  HttpCode, 
-  HttpStatus,
-  ParseIntPipe,
-  NotFoundException,
-  BadRequestException,
-  Query,
-  Req,  // Thêm Req để access full request
-  Logger,  // Thêm Logger
-} from '@nestjs/common';
-import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto } from '../auth/dto/user.dto';  
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';  
+import { Controller, Get, Post, Put, Delete, Param, Body, NotFoundException, Query, BadRequestException, UseGuards } from '@nestjs/common';
+import { UserService } from '../users/users.service';
+import { CreateUserDto } from '../auth/dto/create-user.dto';
+import { UpdateUserDto } from '../auth/dto/update-user.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '../database/entities/user.entity';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';  
 
-@ApiTags('Users')  
-@ApiBearerAuth()  
-@Controller('api/v1/user')
-@UseGuards(JwtAuthGuard)  
-export class UsersController {
-  private readonly logger = new Logger(UsersController.name);  
+@Controller('student')
+export class StudentController {
+  constructor(private readonly studentService: UserService) { }
 
-  constructor(private readonly usersService: UsersService) {}
-
-  // GET /api/v1/user: Lấy tất cả users (admin only)
-  @Get()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get all users (Admin only)' })
-  @ApiResponse({ status: 200, description: 'List users' })
-  async findAll(@Req() req: any) { 
-    this.logger.log(`Received GET /api/v1/user request - Headers: ${JSON.stringify(req.headers)}, Query: ${JSON.stringify(req.query)}`);
-    const users = await this.usersService.findAll();
-    if (users.length === 0) {
-      throw new NotFoundException('Không có user nào trong hệ thống.');
-    }
-    const response = { 
-      data: users.map((user, index) => ({
-        index: index + 1,
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt.toLocaleDateString('vi-VN'),
-      })),
-      count: users.length 
+  // Thêm sinh viên mới (yêu cầu auth, chỉ admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('create')
+  async addUser(@Body() body: CreateUserDto) {
+    const password = body.password as string;
+    const email = body.email as string;
+    const role = body.role;
+    const input: CreateUserDto = {
+      email,
+      password,
+      role
     };
-    this.logger.log(`GET /api/v1/user response: ${JSON.stringify(response)}`);  
-    return response;
+    const result = await this.studentService.createStudent(input);
+    if (!result.success || !result.student) {
+      throw new BadRequestException(result.error || 'Có lỗi xảy ra khi thêm sinh viên.');
+    }
+    return {
+      message: 'Thêm sinh viên thành công!',
+      student: {
+        id: result.student.id,
+        email: result.student.email,
+        password: result.student.password,
+        role: result.student.roles,
+      },
+    };
   }
 
-  // GET /api/v1/user/search?query=... : Tìm kiếm users by email/role (admin/user)
+  // Lấy danh sách sinh viên (yêu cầu auth)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('list')
+  async listAllStudents() {
+    const students = await this.studentService.getAllStudents();
+    if (students.length === 0) {
+      throw new NotFoundException('Không có sinh viên nào trong hệ thống.');
+    }
+    return {
+      total: students.length,
+      students: students.map((student, index) => ({
+        index: index + 1,
+        id: student.id,
+        age: student.age,
+        email: student.email,
+        major: student.major,
+        gpa: student.gpa.toFixed(2),
+        createdAt: student.createdAt.toLocaleDateString('vi-VN'),
+      })),
+    };
+  }
+
+  // Tìm kiếm sinh viên (yêu cầu auth, user hoặc admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
   @Get('search')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.USER)
-  @ApiOperation({ summary: 'Search users by email or role' })
-  @ApiQuery({ name: 'query', description: 'Email or role keyword' })
-  @ApiResponse({ status: 200, description: 'Search results' })
-  async search(@Query('query') query: string, @Req() req: any) {
-    this.logger.log(`Received GET /api/v1/user/search request - Query: ${query}, Headers: ${JSON.stringify(req.headers)}`);  // Log query, headers
+  async searchStudent(@Query('query') query: string) {
     if (!query || query.trim().length === 0) {
       throw new BadRequestException('Vui lòng nhập từ khóa tìm kiếm.');
     }
-    const users = await this.usersService.search(query.trim());
-    if (users.length === 0) {
-      throw new NotFoundException('Không tìm thấy user nào.');
+    const students = await this.studentService.searchStudents(query);
+    if (students.length === 0) {
+      throw new NotFoundException('Không tìm thấy sinh viên nào.');
     }
-    const response = { 
-      data: users.map((user, index) => ({
+    return {
+      total: students.length,
+      students: students.map((student, index) => ({
         index: index + 1,
-        id: user.id,
-        email: user.email,
-        role: user.role,
+        fullName: student.fullName,
+        email: student.email,
+        gpa: student.gpa.toFixed(2),
       })),
-      count: users.length 
     };
-    this.logger.log(`GET /api/v1/user/search response: ${JSON.stringify(response)}`);  // Log response
-    return response;
   }
 
-  // GET /api/v1/user/:id: Lấy 1 user theo ID (admin only) - Thêm log
-  @Get(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get user by ID (Admin only)' })
-  @ApiResponse({ status: 200, description: 'User found' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-    this.logger.log(`Received GET /api/v1/user/${id} request - Headers: ${JSON.stringify(req.headers)}`);  // Log params, headers
-    const user = await this.usersService.findOne(id);
-    if (!user) {
-      throw new NotFoundException(`User với ID ${id} không tồn tại`);
+  // Cập nhật thông tin (yêu cầu auth, chỉ admin hoặc owner - nhưng đơn giản hóa chỉ admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('update/:id')
+  async updateStudent(@Param('id') idStr: string, @Body() body: Partial<UpdateStudentDto>) {
+    const id = Number(idStr);
+    if (isNaN(id)) {
+      throw new BadRequestException('ID không hợp lệ. Vui lòng nhập số hợp lệ.');
     }
-    const response = { 
-      data: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+    const existingStudent = await this.studentService.getStudentById(id);
+    if (!existingStudent) {
+      throw new NotFoundException('Không tìm thấy sinh viên với ID này.');
+    }
+    // if (existingStudent.age > 20 && existingStudent.gpa > 3) {
+    //   throw new BadRequestException('Sinh viên này đã trên 20 tuổi hoặc GPA lớn hơn 3, không được update!');
+    // }
+    const updateData: UpdateStudentDto = { id };
+    if (body.fullName?.trim()) {
+      updateData.fullName = body.fullName.trim();
+    }
+    if (body.age !== undefined) {
+      const age = parseInt(body.age as any);
+      if (!isNaN(age)) {
+        updateData.age = age;
       }
-    };
-    this.logger.log(`GET /api/v1/user/${id} response: ${JSON.stringify(response)}`);  // Log response
-    return response;
-  }
+      if (age > 20) {
+        throw new BadRequestException('Sinh viên này đã trên 20 tuổi, không được update!');
+      }
 
-  // POST /api/v1/user/create: Tạo user mới (admin only) - Thêm log
-  @Post('create')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new user (Admin only)' })
-  @ApiResponse({ status: 201, description: 'User created' })
-  async create(@Body() createUserDto: CreateUserDto, @Req() req: any) {
-    this.logger.log(`Received POST /api/v1/user/create request - Body: ${JSON.stringify(createUserDto)}, Headers: ${JSON.stringify(req.headers)}`);  // Log body, headers
-    if (createUserDto.password.length < 6) {
-      throw new BadRequestException('Mật khẩu phải có ít nhất 6 ký tự.');
     }
-    const newUser = await this.usersService.create(createUserDto);
-    const response = { 
-      data: {
-        id: newUser.id,
-        email: newUser.email,
-        role: newUser.role,
-      },
-      message: 'User created successfully'
-    };
-    this.logger.log(`POST /api/v1/user/create response: ${JSON.stringify(response)}`);  // Log response
-    return response;
-  }
-
-  // PUT /api/v1/user/update/:id: Update user (admin only) - Thêm log
-  @Put('update/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Update user by ID (Admin only)' })
-  @ApiResponse({ status: 200, description: 'User updated' })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto, @Req() req: any) {
-    this.logger.log(`Received PUT /api/v1/user/update/${id} request - Body: ${JSON.stringify(updateUserDto)}, Headers: ${JSON.stringify(req.headers)}`);  // Log body, params, headers
-    const existingUser = await this.usersService.findOne(id);
-    if (!existingUser) {
-      throw new NotFoundException(`User ID ${id} không tồn tại.`);
+    if (body.email !== "") {
+      updateData.email = body.email.trim();
     }
-    const updatedUser = await this.usersService.update(id, updateUserDto);
-    const response = { 
-      data: updatedUser,
-      message: 'User updated successfully'
-    };
-    this.logger.log(`PUT /api/v1/user/update/${id} response: ${JSON.stringify(response)}`);  // Log response
-    return response;
+    if (body.major !== "") {
+      updateData.major = body.major.trim();
+    }
+    if (body.gpa !== undefined) {
+      const gpa = parseFloat(body.gpa as any);
+      if (!isNaN(gpa)) {
+        updateData.gpa = gpa;
+      }
+      if (gpa > 3) {
+        throw new BadRequestException('Sinh viên này có GPA lớn hơn 3, không được update!');
+      }
+    }
+    if (body.password !== "") {
+      updateData.password = body.password.trim();
+    }
+    console.log(updateData);
+    if (body.phone !== "") {
+      const phone = body.phone as string;
+      if (!/^\d{10}$/.test(phone)) {
+        throw new BadRequestException('Số điện thoại phải đủ 10 số và phải là chữ số.');
+      }
+      updateData.phone = phone;
+    }
+    const result = await this.studentService.updateStudent(updateData);
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Có lỗi xảy ra khi cập nhật.');
+    }
+    return { message: 'Cập nhật thông tin sinh viên thành công!' };
   }
 
-  // DELETE /api/v1/user/delete/:id: Xóa user (admin only) - Thêm log (nếu có route delete)
-  @Delete('delete/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Delete user by ID (Admin only)' })
-  async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-    this.logger.log(`Received DELETE /api/v1/user/delete/${id} request - Headers: ${JSON.stringify(req.headers)}`);  // Log params, headers
-    await this.usersService.delete(id);
-    this.logger.log(`DELETE /api/v1/user/delete/${id} success - User deleted`);
-    return { message: 'User deleted successfully' };
+  // Xóa sinh viên (yêu cầu auth, chỉ admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('delete/:id')
+  async deleteStudent(@Param('id') idStr: string) {
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      throw new BadRequestException('ID không hợp lệ. Vui lòng nhập một số.');
+    }
+    const existingStudent = await this.studentService.getStudentById(id);
+    if (!existingStudent) {
+      throw new NotFoundException('Không tìm thấy sinh viên với ID này.');
+    }
+    if (existingStudent.gpa > 3 && existingStudent.age < 20) {
+      throw new BadRequestException('Sinh viên này có điểm GPA lớn hơn 3 hoặc số tuổi nhỏ hơn 20, không thể xóa!');
+    }
+    const result = await this.studentService.deleteStudent(id);
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Có lỗi xảy ra khi xóa.');
+    }
+    return { message: 'Xóa sinh viên thành công!' };
   }
 }

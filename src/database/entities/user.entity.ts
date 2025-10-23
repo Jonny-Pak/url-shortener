@@ -24,10 +24,10 @@ export class User {
   })
   role: UserRole;
 
-  @CreateDateColumn()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @UpdateDateColumn()  
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 
   @OneToMany(() => ShortUrl, (shortUrl) => shortUrl.user)
