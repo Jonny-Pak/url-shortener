@@ -37,14 +37,14 @@ export class UserController {
     };
   }
 
-  // Lấy danh sách sinh viên (yêu cầu auth)
+  // Lấy danh sách người dùng (yêu cầu auth)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get('list')
   async listAllUser() {
     const user = await this.userService.getAllUser();
     if (user.length === 0) {
-      throw new NotFoundException('Không có sinh viên nào trong hệ thống.');
+      throw new NotFoundException('Không có người dùng nào trong hệ thống.');
     }
     return {
       total: user.length,
@@ -57,7 +57,7 @@ export class UserController {
     };
   }
 
-  // Tìm kiếm sinh viên (yêu cầu auth, user hoặc admin)
+  // Tìm kiếm users (yêu cầu auth, user hoặc admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
   @Get('search')

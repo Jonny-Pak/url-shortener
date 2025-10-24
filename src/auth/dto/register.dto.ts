@@ -1,10 +1,5 @@
-// src/auth/dto/register.dto
-import { IsEmail, IsNotEmpty, MinLength, Matches, IsOptional, IsArray, IsEnum } from 'class-validator';
-
-export enum Role {
-  User = 'user',
-  Admin = 'admin',
-}
+// src/auth/dto/register.dto.ts
+import { IsEmail, IsNotEmpty, MinLength, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -16,9 +11,4 @@ export class RegisterDto {
     message: 'Mật khẩu phải chứa ít nhất một chữ hoa, một chữ thường và một số',
   })
   password: string;
-
-  @IsOptional()
-  @IsArray()
-  @IsEnum(Role, { each: true, message: 'Role phải là user hoặc admin' })
-  role?: Role[];
 }

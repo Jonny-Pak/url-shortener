@@ -1,17 +1,16 @@
-import { IsString, IsNotEmpty, IsNumber, IsEmail, IsArray, IsOptional } from 'class-validator';
+// src/auth/dto/create-user.dto.ts
+import { IsEmail, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
+import { Role } from '../../database/entities/user.entity';
 
 export class CreateUserDto {
-    @IsEmail()
-    @IsNotEmpty()
-    email: string;
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 
-    @IsString()
-    @IsNotEmpty()
-    password: string;
+  @IsNotEmpty()
+  password: string;
 
-    @IsArray()
-    @IsString({ each: true })
-    @IsOptional()
-    role: string[];
-
+  @IsOptional()
+  @IsEnum(Role)
+  role?: Role;
 }
