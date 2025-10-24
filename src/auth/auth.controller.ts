@@ -25,9 +25,9 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Tài khoản tạo thành công' })
   @ApiResponse({ status: 400, description: 'Validation error (password/email)' })
   @ApiResponse({ status: 409, description: 'Email đã tồn tại' })
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
-  }
+async register(@Body() dto: RegisterDto) {
+  return this.authService.register({ email: dto.email, password: dto.password, role: ['user'] });
+}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)  

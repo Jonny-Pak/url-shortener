@@ -6,11 +6,13 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
-import { User } from './user.entity';
+import { User } from './user.entity';  // Đảm bảo path đúng (e.g., ../database/entities/user.entity nếu cần)
 import { Click } from './click.entity';
 
 @Entity('short_urls')
+@Index(['shortCode'])  // Tối ưu query cho shortCode unique
 export class ShortUrl {
   @PrimaryGeneratedColumn()
   id: number;
@@ -21,10 +23,10 @@ export class ShortUrl {
   @Column()
   originalUrl: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'user_id' })
   userId: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'timestamp' })
   expiresAt: Date;
 
   @CreateDateColumn()
@@ -33,10 +35,11 @@ export class ShortUrl {
   @Column({ default: true })
   isActive: boolean;
 
-  @ManyToOne(() => User, (user) => user.shortUrls, { nullable: true })
+  // ManyToOne relation - Giờ sẽ work vì User có shortUrls
+  @ManyToOne(() => User, (user) => user.shortUrls, { nullable: true, onDelete: 'SET NULL' })  // Set NULL nếu user xóa
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @OneToMany(() => Click, (click) => click.shortUrl)
+  @OneToMany(() => Click, (click) => click.shortUrl, { cascade: true })
   clicks: Click[];
 }

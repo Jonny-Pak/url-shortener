@@ -6,9 +6,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
-@Controller('student')
-export class StudentController {
-  constructor(private readonly studentService: UserService) { }
+@Controller('api/v1/user') 
+export class UserController {
+  constructor(private readonly userService: UserService) { }
 
   // Thêm sinh viên mới (yêu cầu auth, chỉ admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,17 +23,16 @@ export class StudentController {
       password,
       role
     };
-    const result = await this.studentService.createStudent(input);
-    if (!result.success || !result.student) {
+    const result = await this.userService.createUser(input);
+    if (!result.success || !result.user) {
       throw new BadRequestException(result.error || 'Có lỗi xảy ra khi thêm sinh viên.');
     }
     return {
-      message: 'Thêm sinh viên thành công!',
+      message: 'Thêm người dùng thành công!',
       student: {
-        id: result.student.id,
-        email: result.student.email,
-        password: result.student.password,
-        role: result.student.roles,
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
       },
     };
   }
@@ -42,21 +41,18 @@ export class StudentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get('list')
-  async listAllStudents() {
-    const students = await this.studentService.getAllStudents();
-    if (students.length === 0) {
+  async listAllUser() {
+    const user = await this.userService.getAllUser();
+    if (user.length === 0) {
       throw new NotFoundException('Không có sinh viên nào trong hệ thống.');
     }
     return {
-      total: students.length,
-      students: students.map((student, index) => ({
+      total: user.length,
+      user: user.map((user, index) => ({
         index: index + 1,
-        id: student.id,
-        age: student.age,
-        email: student.email,
-        major: student.major,
-        gpa: student.gpa.toFixed(2),
-        createdAt: student.createdAt.toLocaleDateString('vi-VN'),
+        id: user.id,
+        email: user.email,
+        createdAt: user.createdAt.toLocaleDateString('vi-VN'),
       })),
     };
   }
@@ -65,21 +61,19 @@ export class StudentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
   @Get('search')
-  async searchStudent(@Query('query') query: string) {
+  async searchUser(@Query('query') query: string) {
     if (!query || query.trim().length === 0) {
       throw new BadRequestException('Vui lòng nhập từ khóa tìm kiếm.');
     }
-    const students = await this.studentService.searchStudents(query);
-    if (students.length === 0) {
-      throw new NotFoundException('Không tìm thấy sinh viên nào.');
+    const user = await this.userService.searchUser(query);
+    if (user.length === 0) {
+      throw new NotFoundException('Không tìm thấy người dùng nào.');
     }
     return {
-      total: students.length,
-      students: students.map((student, index) => ({
+      total: user.length,
+      students: user.map((user, index) => ({
         index: index + 1,
-        fullName: student.fullName,
-        email: student.email,
-        gpa: student.gpa.toFixed(2),
+        email: user.email,
       })),
     };
   }
@@ -88,82 +82,47 @@ export class StudentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('update/:id')
-  async updateStudent(@Param('id') idStr: string, @Body() body: Partial<UpdateStudentDto>) {
+  async updateUser(@Param('id') idStr: string, @Body() body: Partial<UpdateUserDto>) {
     const id = Number(idStr);
     if (isNaN(id)) {
       throw new BadRequestException('ID không hợp lệ. Vui lòng nhập số hợp lệ.');
     }
-    const existingStudent = await this.studentService.getStudentById(id);
+    const existingStudent = await this.userService.getUserById(id);
     if (!existingStudent) {
-      throw new NotFoundException('Không tìm thấy sinh viên với ID này.');
+      throw new NotFoundException('Không tìm thấy người dùng với ID này.');
     }
     // if (existingStudent.age > 20 && existingStudent.gpa > 3) {
     //   throw new BadRequestException('Sinh viên này đã trên 20 tuổi hoặc GPA lớn hơn 3, không được update!');
     // }
-    const updateData: UpdateStudentDto = { id };
-    if (body.fullName?.trim()) {
-      updateData.fullName = body.fullName.trim();
-    }
-    if (body.age !== undefined) {
-      const age = parseInt(body.age as any);
-      if (!isNaN(age)) {
-        updateData.age = age;
-      }
-      if (age > 20) {
-        throw new BadRequestException('Sinh viên này đã trên 20 tuổi, không được update!');
-      }
-
-    }
+    const updateData: UpdateUserDto = { id };
     if (body.email !== "") {
       updateData.email = body.email.trim();
-    }
-    if (body.major !== "") {
-      updateData.major = body.major.trim();
-    }
-    if (body.gpa !== undefined) {
-      const gpa = parseFloat(body.gpa as any);
-      if (!isNaN(gpa)) {
-        updateData.gpa = gpa;
-      }
-      if (gpa > 3) {
-        throw new BadRequestException('Sinh viên này có GPA lớn hơn 3, không được update!');
-      }
     }
     if (body.password !== "") {
       updateData.password = body.password.trim();
     }
     console.log(updateData);
-    if (body.phone !== "") {
-      const phone = body.phone as string;
-      if (!/^\d{10}$/.test(phone)) {
-        throw new BadRequestException('Số điện thoại phải đủ 10 số và phải là chữ số.');
-      }
-      updateData.phone = phone;
-    }
-    const result = await this.studentService.updateStudent(updateData);
+    const result = await this.userService.updateUser(updateData);
     if (!result.success) {
       throw new BadRequestException(result.error || 'Có lỗi xảy ra khi cập nhật.');
     }
-    return { message: 'Cập nhật thông tin sinh viên thành công!' };
+    return { message: 'Cập nhật thông tin người dùng thành công!' };
   }
 
   // Xóa sinh viên (yêu cầu auth, chỉ admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('delete/:id')
-  async deleteStudent(@Param('id') idStr: string) {
+  async deleteUser(@Param('id') idStr: string) {
     const id = parseInt(idStr, 10);
     if (isNaN(id)) {
       throw new BadRequestException('ID không hợp lệ. Vui lòng nhập một số.');
     }
-    const existingStudent = await this.studentService.getStudentById(id);
+    const existingStudent = await this.userService.getUserById(id);
     if (!existingStudent) {
       throw new NotFoundException('Không tìm thấy sinh viên với ID này.');
     }
-    if (existingStudent.gpa > 3 && existingStudent.age < 20) {
-      throw new BadRequestException('Sinh viên này có điểm GPA lớn hơn 3 hoặc số tuổi nhỏ hơn 20, không thể xóa!');
-    }
-    const result = await this.studentService.deleteStudent(id);
+    const result = await this.userService.deleteUser(id);
     if (!result.success) {
       throw new BadRequestException(result.error || 'Có lỗi xảy ra khi xóa.');
     }

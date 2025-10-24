@@ -1,38 +1,39 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { ShortUrl } from './short-url.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,  // Thêm để tự động update updatedAt
+  OneToMany,  // Thêm cho relation với ShortUrl
+} from 'typeorm';
+import { ShortUrl } from './short-url.entity';  // Import ShortUrl (đảm bảo path đúng, e.g., cùng folder entities)
 
-export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
-}
-
+// Định nghĩa table name rõ ràng
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ unique: true })  // Thêm unique để tránh duplicate emails
   email: string;
 
-  @Column()
+  @Column({ nullable: false })  // Password bắt buộc
   password: string;
 
-  @Column({
-    type: 'enum',
-    enum: UserRole,
-    default: UserRole.USER,  
-  })
-  role: UserRole;
+@Column({ type: 'text', array: true, nullable: false, default: () => "ARRAY['user']::text[]" })
+role: string[];
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+
+  @CreateDateColumn({ type: 'timestamp' })  // Tự động set createdAt
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ type: 'timestamp' })  // Tự động update updatedAt khi save/update
   updatedAt: Date;
 
-  @OneToMany(() => ShortUrl, (shortUrl) => shortUrl.user)
-  shortUrls: ShortUrl[];
+  // Thêm OneToMany relation với ShortUrl (fix lỗi TS2339 trong ShortUrl entity)
+  @OneToMany(() => ShortUrl, (shortUrl) => shortUrl.user, { cascade: true, nullable: true })
+  shortUrls: ShortUrl[];  // Property này cho phép query user.shortUrls
 }
 
-// Type cho response API (omit password, id required - dùng ở service/controller)
+// Loại bỏ password khi trả kết quả API (giữ nguyên, nhưng giờ compatible với shortUrls)
 export type UserResponse = Omit<User, 'password'>;

@@ -1,5 +1,10 @@
-import { IsEmail, IsNotEmpty, MinLength, Matches, IsOptional, IsEnum } from 'class-validator';
-import { UserRole } from '../../database/entities/user.entity';  // Import enum
+// src/auth/dto/register.dto
+import { IsEmail, IsNotEmpty, MinLength, Matches, IsOptional, IsArray, IsEnum } from 'class-validator';
+
+export enum Role {
+  User = 'user',
+  Admin = 'admin',
+}
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Email không hợp lệ' })
@@ -13,8 +18,7 @@ export class RegisterDto {
   password: string;
 
   @IsOptional()
-  @IsEnum(UserRole, { 
-    message: 'Role phải là "user" hoặc "admin" (nhưng public register chỉ cho "user")' 
-  })
-  role?: UserRole;  
+  @IsArray()
+  @IsEnum(Role, { each: true, message: 'Role phải là user hoặc admin' })
+  role?: Role[];
 }
