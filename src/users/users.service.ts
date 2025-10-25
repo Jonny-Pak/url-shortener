@@ -26,7 +26,7 @@ export class UserService {
     const user = new User();
     user.email = input.email;
     user.password = hashedPassword;
-    user.role = input.role ?? Role.User; // enum đơn, không phải mảng
+    user.role = input.role ?? Role.User; 
     user.createdAt = now;
     user.updatedAt = now;
 
@@ -73,7 +73,6 @@ export class UserService {
       update.password = await bcrypt.hash(input.password, 10);
     }
 
-    // enum đơn: gán trực tiếp nếu có
     if (input.role) {
       update.role = input.role;
     }

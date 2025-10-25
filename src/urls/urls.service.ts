@@ -10,7 +10,6 @@ export class UrlsService {
   constructor(@InjectRepository(ShortUrl) private readonly shortRepo: Repository<ShortUrl>) {}
 
   async create(dto: CreateUrlDto, userId?: number) {
-    // sanitize URL ngay trong method
     let sanitized = dto.originalUrl;
     try {
       const u = new URL(dto.originalUrl);
@@ -21,7 +20,7 @@ export class UrlsService {
       sanitized = dto.originalUrl;
     }
 
-    // generate unique short code ngay trong method
+
     let code = '';
     let attempts = 0;
     while (attempts < 5) {

@@ -35,8 +35,7 @@ export class ShortUrl {
   @Column({ default: true })
   isActive: boolean;
 
-  // ManyToOne relation - Giờ sẽ work vì User có shortUrls
-  @ManyToOne(() => User, (user) => user.shortUrls, { nullable: true, onDelete: 'SET NULL' })  // Set NULL nếu user xóa
+  @ManyToOne(() => User, (user) => user.shortUrls, { nullable: true, onDelete: 'SET NULL' })  
   @JoinColumn({ name: 'user_id' })
   user: User;
 

@@ -7,7 +7,7 @@ import { User } from '../database/entities/user.entity'
 export class UserRepository {
   constructor(
     @InjectRepository(User)
-    private readonly repo: Repository<User>,  // Giữ private
+    private readonly repo: Repository<User>,  
   ) {}
 
   async findAll(): Promise<User[]> {
@@ -43,7 +43,6 @@ export class UserRepository {
     return this.repo.query(sql);
   }
 
-  // Thêm method public mới để query theo email (fix lỗi private repo)
   async findByEmail(email: string): Promise<User | null> {
     return this.repo.findOneBy({ email });
   }

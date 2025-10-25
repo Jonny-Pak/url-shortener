@@ -1,29 +1,23 @@
-import { Module } from '@nestjs/common';
-import { forwardRef } from '@nestjs/common';  // Thêm forwardRef để fix circular
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+// src/auth/auth.module.ts
+import { Module, forwardRef } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { UsersModule } from '../users/users.module';  // Path relative từ src/auth/ → ../users/
+import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { LocalStrategy } from './strategies/local.stratery';
 
 @Module({
   imports: [
-    forwardRef(() => UsersModule),  // Fix: Forward ref UsersModule (break cycle)
+    forwardRef(() => UsersModule),
     ConfigModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
-      }),
-      inject: [ConfigService],
-    }),
+    PassportModule, 
+    JwtModule.register({}),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule, PassportModule],
+  providers: [AuthService, JwtStrategy, LocalStrategy],
+  exports: [AuthService, PassportModule, JwtModule],
 })
 export class AuthModule {}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, NotFoundException, Query, BadRequestException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, NotFoundException, Query, BadRequestException, UseGuards, HttpCode } from '@nestjs/common';
 import { UserService } from '../users/users.service';
 import { CreateUserDto } from '../auth/dto/create-user.dto';
 import { UpdateUserDto } from '../auth/dto/update-user.dto';
@@ -78,10 +78,11 @@ export class UserController {
     };
   }
 
-  // Cập nhật thông tin (yêu cầu auth, chỉ admin hoặc owner - nhưng đơn giản hóa chỉ admin)
+  // Cập nhật thông tin (yêu cầu auth, chỉ admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('update/:id')
+  @HttpCode(200)
   async updateUser(@Param('id') idStr: string, @Body() body: Partial<UpdateUserDto>) {
     const id = Number(idStr);
     if (isNaN(id)) {
@@ -92,7 +93,7 @@ export class UserController {
       throw new NotFoundException('Không tìm thấy người dùng với ID này.');
     }
     // if (existingStudent.age > 20 && existingStudent.gpa > 3) {
-    //   throw new BadRequestException('Sinh viên này đã trên 20 tuổi hoặc GPA lớn hơn 3, không được update!');
+    //   throw new BadRequestException('Người này đã trên 20 tuổi hoặc GPA lớn hơn 3, không được update!');
     // }
     const updateData: UpdateUserDto = { id };
     if (body.email !== "") {
@@ -112,7 +113,7 @@ export class UserController {
   // Xóa sinh viên (yêu cầu auth, chỉ admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @Post('delete/:id')
+  @Delete('delete/:id')
   async deleteUser(@Param('id') idStr: string) {
     const id = parseInt(idStr, 10);
     if (isNaN(id)) {
@@ -120,12 +121,12 @@ export class UserController {
     }
     const existingStudent = await this.userService.getUserById(id);
     if (!existingStudent) {
-      throw new NotFoundException('Không tìm thấy sinh viên với ID này.');
+      throw new NotFoundException('Không tìm thấy người dùng với ID này.');
     }
     const result = await this.userService.deleteUser(id);
     if (!result.success) {
       throw new BadRequestException(result.error || 'Có lỗi xảy ra khi xóa.');
     }
-    return { message: 'Xóa sinh viên thành công!' };
+    return { message: 'Xóa người dùng thành công!' };
   }
 }
