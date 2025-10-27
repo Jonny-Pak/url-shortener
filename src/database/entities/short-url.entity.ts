@@ -1,44 +1,36 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
-  Index,
-} from 'typeorm';
-import { User } from './user.entity';  // Đảm bảo path đúng (e.g., ../database/entities/user.entity nếu cần)
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { User } from '../../database/entities/user.entity';
 import { Click } from './click.entity';
 
 @Entity('short_urls')
-@Index(['shortCode'])  // Tối ưu query cho shortCode unique
 export class ShortUrl {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
-  shortCode: string;
+  @Index({ unique: true })
+  @Column({ length: 16 })
+  code: string;
 
-  @Column()
-  originalUrl: string;
-
-  @Column({ nullable: true, name: 'user_id' })
-  userId: number;
-
-  @Column({ nullable: true, type: 'timestamp' })
-  expiresAt: Date;
-
-  @CreateDateColumn()
-  createdAt: Date;
+  @Column({ type: 'text' })
+  original_url: string;
 
   @Column({ default: true })
-  isActive: boolean;
+  is_active: boolean;
 
-  @ManyToOne(() => User, (user) => user.shortUrls, { nullable: true, onDelete: 'SET NULL' })  
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+  @Column({ type: 'timestamp', nullable: true })
+  expires_at: Date | null;
+
+  @ManyToOne(() => User, (user) => user.shortUrls, { nullable: true })
+  user: User | null;
 
   @OneToMany(() => Click, (click) => click.shortUrl, { cascade: true })
   clicks: Click[];
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
 }
+
+

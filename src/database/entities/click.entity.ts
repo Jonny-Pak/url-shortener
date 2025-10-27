@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
 import { ShortUrl } from './short-url.entity';
 
 @Entity('clicks')
@@ -6,25 +6,12 @@ export class Click {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  shortUrlId: number;
+  @ManyToOne(() => ShortUrl, (short) => short.clicks, { onDelete: 'CASCADE' })
+  shortUrl: ShortUrl;
 
-  @Column()
-  ipAddress: string;
-
-  @Column({ nullable: true })
-  userAgent: string;
-
-  @Column({ nullable: true })
-  referrer: string;
-
-  @Column({ nullable: true })
-  country: string;
+  @Column({ length: 64, nullable: true })
+  ip_address: string | null;
 
   @CreateDateColumn()
-  createdAt: Date;
-
-  @ManyToOne(() => ShortUrl, (shortUrl) => shortUrl.clicks)
-  @JoinColumn({ name: 'short_url_id' })
-  shortUrl: ShortUrl;
+  created_at: Date;
 }
