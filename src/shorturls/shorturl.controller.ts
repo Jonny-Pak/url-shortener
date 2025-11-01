@@ -1,99 +1,35 @@
-import { Controller, Post, Get, Delete, Param, Body, Req, UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ShortUrl } from '../database/entities/short-url.entity';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+// src/shorturls/shorturls.controller.ts
+import { Controller, Post, Body, Req, BadRequestException } from '@nestjs/common';
+import { ShortUrlsService } from './shorturl.service';
+import { CreateShortUrlDto } from './dto/create-shorturl.dto';
 
-@Controller('api/shortlinks')
+@Controller('shortlinks')
 export class ShortUrlsController {
-  constructor(
-    @InjectRepository(ShortUrl) private readonly repo: Repository<ShortUrl>,
-    private readonly jwt: JwtService,
-    private readonly config: ConfigService,
-  ) {}
+  constructor(private readonly shortUrlsService: ShortUrlsService) {}
 
-  // POST /api/shortlinks — public + authenticated
-  @Post()
-  async create(@Body() body: { original_url: string; expires_at?: string | null }, @Req() req: any) {
-    // Inline: optional auth
-    let userId: number | null = null;
-    const auth = req.headers?.authorization as string | undefined;
-    if (auth && auth.startsWith('Bearer ')) {
-      try {
-        const payload = this.jwt.verify(auth.slice(7), { secret: this.config.get<string>('JWT_SECRET')! });
-        userId = payload?.sub ?? null;
-      } catch {
-        userId = null; 
-      }
+  @Post('create')
+  async create(@Body() body: CreateShortUrlDto, @Req() req: any) {
+    // optional auth: nếu JwtAuthGuard đã chạy thì req.user sẽ có userId
+    let userId: number | undefined = undefined;
+    if (req && req.user && typeof req.user.userId === 'number') {
+      userId = req.user.userId;
     }
 
-    // Inline: generate unique code
-    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (;;) {
-      code = Array.from({ length: 7 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
-      const exists = await this.repo.exist({ where: { code } });
-      if (!exists) break;
+    // kiểm tra đơn giản original_url để tránh trống
+    if (!body.original_url || typeof body.original_url !== 'string') {
+      throw new BadRequestException('original_url không hợp lệ.');
     }
 
+    const result = await this.shortUrlsService.createShortUrl(body, userId);
+    if (!result.success || !result.data) {
+      throw new BadRequestException(result.error || 'Tạo shortlink thất bại.');
+    }
 
-    const expires = body.expires_at ? new Date(body.expires_at) : null;
-
-
-    const entity = this.repo.create({
-      code,
-      original_url: body.original_url,
-      is_active: true,
-      expires_at: expires,
-      user: userId ? ({ id: userId } as any) : null,
-    });
-    const saved = await this.repo.save(entity);
-    return { id: saved.id, code: saved.code, shortlink: `/${saved.code}` };
-  }
-
-  // GET /api/shortlinks — authenticated only
-  @Get()
-  async listMine(@Req() req: any) {
-    const auth = req.headers?.authorization as string | undefined;
-    if (!auth?.startsWith('Bearer ')) throw new UnauthorizedException('Missing token');
-    const payload = this.jwt.verify(auth.slice(7), { secret: this.config.get<string>('JWT_SECRET')! });
-    const userId = payload?.sub;
-    if (!userId) throw new UnauthorizedException('Invalid token');
-
-    return this.repo.find({ where: { user: { id: userId }, is_active: true }, order: { created_at: 'DESC' } });
-  }
-
-  // GET /api/shortlinks/:id — authenticated only
-  @Get(':id')
-  async getOne(@Param('id') id: string, @Req() req: any) {
-    const auth = req.headers?.authorization as string | undefined;
-    if (!auth?.startsWith('Bearer ')) throw new UnauthorizedException('Missing token');
-    const payload = this.jwt.verify(auth.slice(7), { secret: this.config.get<string>('JWT_SECRET')! });
-    const userId = payload?.sub;
-    if (!userId) throw new UnauthorizedException('Invalid token');
-
-    const short = await this.repo.findOne({ where: { id: Number(id), is_active: true }, relations: ['user'] });
-    if (!short) throw new NotFoundException('Không tìm thấy short link');
-    if (!short.user || short.user.id !== userId) throw new ForbiddenException('Không có quyền truy cập');
-    return short;
-  }
-
-  // DELETE /api/shortlinks/:id — authenticated only (soft delete)
-  @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: any) {
-    const auth = req.headers?.authorization as string | undefined;
-    if (!auth?.startsWith('Bearer ')) throw new UnauthorizedException('Missing token');
-    const payload = this.jwt.verify(auth.slice(7), { secret: this.config.get<string>('JWT_SECRET')! });
-    const userId = payload?.sub;
-    if (!userId) throw new UnauthorizedException('Invalid token');
-
-    const short = await this.repo.findOne({ where: { id: Number(id) }, relations: ['user'] });
-    if (!short) throw new NotFoundException('Không tìm thấy short link');
-    if (!short.user || short.user.id !== userId) throw new ForbiddenException('Không có quyền xoá');
-
-    short.is_active = false; 
-    await this.repo.save(short);
-    return { success: true };
+    return {
+      message: 'Tạo shortlink thành công!',
+      id: result.data.id,
+      code: result.data.code,
+      shortlink: result.data.shortlink,
+    };
   }
 }
