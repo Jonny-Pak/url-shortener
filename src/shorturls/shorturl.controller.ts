@@ -1,4 +1,3 @@
-// src/shorturls/shorturls.controller.ts
 import { Controller, Post, Body, Req, BadRequestException } from '@nestjs/common';
 import { ShortUrlsService } from './shorturl.service';
 import { CreateShortUrlDto } from './dto/create-shorturl.dto';
@@ -9,13 +8,11 @@ export class ShortUrlsController {
 
   @Post('create')
   async create(@Body() body: CreateShortUrlDto, @Req() req: any) {
-    // optional auth: nếu JwtAuthGuard đã chạy thì req.user sẽ có userId
     let userId: number | undefined = undefined;
     if (req && req.user && typeof req.user.userId === 'number') {
       userId = req.user.userId;
     }
 
-    // kiểm tra đơn giản original_url để tránh trống
     if (!body.original_url || typeof body.original_url !== 'string') {
       throw new BadRequestException('original_url không hợp lệ.');
     }

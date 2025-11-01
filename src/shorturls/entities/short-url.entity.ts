@@ -9,10 +9,10 @@ import {
   Index,
 } from 'typeorm';
 import { User } from '../../database/entities/user.entity';
-// import { Click } from './click.entity';
+
 
 @Entity('short_urls')
-@Index(['user', 'created_at']) // hỗ trợ list theo user, mới nhất trước
+@Index(['user', 'created_at']) 
 export class ShortUrl {
   @PrimaryGeneratedColumn()
   id: number;
@@ -38,6 +38,5 @@ export class ShortUrl {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   is_active: boolean;
 
-//   @OneToMany(() => Click, (click) => click.shortUrl, { cascade: true })
-//   clicks: Click[];
+
 }
